@@ -1,0 +1,171 @@
+---
+title: "project"
+author: "Ramya and Lakshitha Parvataneni"
+date: "04/04/2022"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#libraries
+
+```{r}
+library("dplyr")
+library("tidyr")
+library("ggplot2")
+library("caTools")
+library("ROCR")
+library("sqldf")
+library("caret")
+library("glmnet")
+```
+
+
+#Loading the data.
+```{r}
+imdb <- read.csv("imdb_database.csv",stringsAsFactors = FALSE)
+head(imdb)
+```
+
+#Data Cleaning.
+
+#Checking for null values in the columns and omitting them.
+```{r}
+colSums(is.na(imdb))
+
+mvedata <- na.omit(imdb)
+
+head(mvedata)
+
+```
+#Removing the columns which has all the null values.
+```{r}
+data1 <- select(mvedata,-c(Serie.Name,Serie.Date))
+head(data1)
+```
+#Changing the Column Names.
+```{r}
+colnames(data1)<- c("movie_name","year","Genre","no_of_Votes","Revenue","Rating","Metascore","Duration","Director","Actors","Restriction","Description") 
+head(data1)
+```
+#Removing the brackets & Punctuations from the column year.
+
+```{r}
+
+data1 <- mutate(data1,year = gsub("[\\(\\)]", " ",year))
+head(data1)
+data1 <- mutate(data1,year = gsub("â€“", "-", year))
+head(data1)
+
+```
+#Converting the Revenue Column to numeric and substituting the null values with 0.
+```{r}
+l <- as.numeric(data1$Revenue)
+
+data1 <- mutate(data1,Revenue = gsub("None", "0",Revenue))
+
+View(data1)
+```
+#Exploratory Analysis.
+
+#top 5 movies which has highest revenue.
+```{r}
+s<-top_n(data1, n=5, Revenue) %>%
+          ggplot(aes(x=movie_name, y=Revenue,width = 0.5,fill = movie_name))+
+geom_bar(stat='identity')+theme_minimal()+xlab("movie_name")+ylab("Revenue")
+
+s
+```
+
+#Movie that has max number of votes.
+
+```{r}
+
+data2 <- data1 %>% 
+select(movie_name,no_of_Votes) %>%
+filter(no_of_Votes == max(no_of_Votes)) %>%
+select(movie_name) 
+data2
+
+
+
+
+```
+
+
+#Regression Analysis:
+
+#We are predicting the Rating.
+
+#Splitting of the dataset into train and test.
+```{r}
+splitdata <- sample.split(data1$Rating,SplitRatio = 0.05)
+trainset <- subset(data1,splitdata==TRUE)
+testset <- subset(data1,splitdata==FALSE)
+View(trainset)
+View(testset)
+
+```
+
+#Building the model.
+```{r}
+model <- lm(Rating ~ movie_name ,data = trainset)
+summary(model)
+```
+
+
+```{r}
+model2 <- lm(Rating ~ movie_name + year    ,data = trainset)
+summary(model2)
+```
+
+```{r}
+model3 <- lm(Rating ~ movie_name+year+Restriction+Duration , data = trainset)
+summary(model3)
+```
+#passing the New data values to the model.
+
+```{r}
+
+new_data <- data.frame(wt=c("inception",2012,12,142))
+
+new_data
+
+```
+
+
+#Predicted Data
+
+```{r}
+predict.model <- predict(model3,data = new_data)
+
+View(predict.model)
+
+
+
+```
+
+```{r}
+predict <- as.numeric(predict.model)
+View(predict)
+
+```
+
+#Data frame for Actual and Predicted values
+
+```{r}
+options(stringsAsFactors = FALSE) 
+
+pre_act <- data.frame(cbind(predict,actual = data1$Rating))
+head(pre_act)
+```
+
+#plot  for predict and actual values.
+
+```{r}
+ggplot(pre_act,aes(x= predict,y= actual)) +
+  geom_point()
+```
