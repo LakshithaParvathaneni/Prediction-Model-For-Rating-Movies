@@ -166,6 +166,6 @@ head(pre_act)
 #plot  for predict and actual values.
 
 ```{r}
-ggplot(pre_act,aes(x= predict,y= actual)) +
+ggplot(pre_act,aes(x= predict,y= actual color = predict)) +
   geom_point()
 ```
